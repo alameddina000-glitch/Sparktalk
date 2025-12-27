@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SparkTalk | AI Social Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .spinner {
+            border: 4px solid #1f2937;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-black text-white min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-md bg-gray-900 rounded-3xl shadow-2xl p-8 border border-gray-800">
+        <h1 class="text-3xl font-bold text-center mb-2 text-blue-500">SparkTalk ✨</h1>
+        <p class="text-center text-gray-400 text-sm mb-8">Master the art of conversation</p>
+        
+        <div class="mb-5">
+            <label class="block text-sm font-medium mb-2 text-gray-300">Who are you talking to?</label>
+            <select id="person" class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-white">
+                <option value="a First Date">First Date</option>
+                <option value="my Boss">My Boss</option>
+                <option value="a Stranger">A Stranger</option>
+                <option value="a New Colleague">New Colleague</option>
+            </select>
+        </div>
+        
+        <div class="mb-6">
+            <label class="block text-sm font-medium mb-2 text-gray-300">How do you feel? (Mood)</label>
+            <input type="text" id="mood" placeholder="e.g., Shy, Energetic, Professional..." class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none text-white">
+        </div>
+        
+        <button onclick="generateTopic()" id="generateBtn" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95">
+            Ignite Spark 🔥
+        </button>
+        
+        <div id="spinner" class="hidden flex justify-center mt-6">
+            <div class="spinner"></div>
+        </div>
+        
+        <div id="result" class="mt-8 hidden animate-fade-in text-left">
+            <div class="bg-gray-800 rounded-2xl p-5 mb-4 border-l-4 border-blue-500">
+                <h2 class="text-blue-500 font-bold mb-2 uppercase text-xs tracking-widest">Ice-Breaker:</h2>
+                <p id="icebreaker" class="text-gray-200 leading-relaxed"></p>
+            </div>
+            <div class="bg-gray-800 rounded-2xl p-5 border-l-4 border-purple-500">
+                <h2 class="text-purple-500 font-bold mb-2 uppercase text-xs tracking-widest">Psychology Tip:</h2>
+                <p id="psychologyTip" class="text-gray-200 text-sm italic"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // مفتاح الـ API الخاص بك تم وضعه هنا بنجاح
+        const OPENAI_API_KEY = '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'; 
+
+        async function generateTopic() {
+            const person = document.getElementById('person').value;
+            const mood = document.getElementById('mood').value.trim();
+            
+            if (!mood) {
+                alert('Please enter your current mood first.');
+                return;
+            }
+            
+            document.getElementById('spinner').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('generateBtn').disabled = true;
+            
+            const prompt = `You are a social intelligence expert. Suggest one creative and deep ice-breaker question to start a conversation with ${person} while I am feeling ${mood}. 
+            The question should be unique and engaging. Also, provide one brief psychology tip for this specific interaction.
+            Format the response exactly as:
+            Question: [text]
+            Tip: [text]`;
+            
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-3.5-turbo',
+                        messages: [{ role: 'user', content: prompt }],
+                        max_tokens: 300,
+                        temperature: 0.8
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                const content = data.choices[0].message.content;
+                
+                const questionPart = content.split('Tip:')[0].replace('Question:', '').trim();
+                const tipPart = content.split('Tip:')[1] ? content.split('Tip:')[1].trim() : "Just be yourself!";
+                
+                document.getElementById('icebreaker').textContent = questionPart;
+                document.getElementById('psychologyTip').textContent = tipPart;
+                
+                document.getElementById('spinner').classList.add('hidden');
+                document.getElementById('result').classList.remove('hidden');
+            } catch (error) {
+                console.error(error);
+                alert('Error: ' + error.message);
+                document.getElementById('spinner').classList.add('hidden');
+            } finally {
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
